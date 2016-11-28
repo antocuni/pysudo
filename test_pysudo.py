@@ -31,8 +31,8 @@ class TestPySudo:
         #
         assert foo(1, 2) == 3
 
-    def test_exit_code(self):
-        @fakesudo
+    def test_exit_code(self, pysudo):
+        @pysudo(fake=True)
         def foo(a, b):
             import sys
             sys.exit(42)
@@ -41,8 +41,8 @@ class TestPySudo:
             foo(1, 2)
         assert 'return code 42' in str(exc.value)
 
-    def test_stdout(self, capsys):
-        @fakesudo
+    def test_stdout(self, pysudo, capsys):
+        @pysudo(fake=True)
         def foo():
             print 'hello'
             print 'world'
@@ -52,8 +52,8 @@ class TestPySudo:
         out, err = capsys.readouterr()
         assert out == 'hello\nworld\n\n' # the extra \n is added by pysudo
 
-    def test_exception(self):
-        @fakesudo
+    def test_exception(self, pysudo):
+        @pysudo(fake=True)
         def foo():
             def bar():
                 0/0
@@ -63,8 +63,8 @@ class TestPySudo:
             foo()
         assert 'ZeroDivisionError' in str(exc.value)
 
-    def test_use_stdout_file(self, tmpdir):
-        @fakesudo(use_stdout_file=True, tmpdir=tmpdir)
+    def test_use_stdout_file(self, pysudo, tmpdir):
+        @pysudo(fake=True, use_stdout_file=True, tmpdir=tmpdir)
         def foo(a, b):
             print 'hello'
             return a+b
