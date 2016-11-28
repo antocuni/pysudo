@@ -155,3 +155,34 @@ class PopenPySudo(AbstractPySudo):
         if self.use_stdout_file:
             stdout = stdout_file.read()
         return proc.returncode, stdout
+
+
+class Win32PySudo(AbstractPySudo):
+
+    def spawn(self, pyfile):
+        import win32com.shell.shell as shell
+        import win32event
+        import win32process
+        SEE_MASK_NOASYNC = 0x00000100
+        SEE_MASK_NOCLOSEPROCESS = 0x00000040
+        #
+        exe = sys.executable
+        stdout_file = pyfile.dirpath('stdout')
+        params = [str(pyfile), str(stdout_file)]
+        params = subprocess.list2cmdline(params)
+        #
+        if self.fake:
+            verb = 'open'
+        else:
+            verb = 'runas'
+        #
+        ret = shell.ShellExecuteEx(
+            fMask=SEE_MASK_NOASYNC+SEE_MASK_NOCLOSEPROCESS,
+            lpVerb=verb,
+            lpFile=exe,
+            lpParameters=params)
+        proc_handle = ret['hProcess']
+        win32event.WaitForSingleObject(proc_handle, -1)
+        returncode = win32process.GetExitCodeProcess(proc_handle)
+        stdout = stdout_file.read()
+        return returncode, stdout

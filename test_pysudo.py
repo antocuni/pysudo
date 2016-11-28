@@ -1,21 +1,31 @@
 import pytest
 import sys
 import os
-from pysudo import PopenPySudo, SudoError
+from pysudo import PopenPySudo, Win32PySudo, SudoError
 
 interactive = pytest.mark.skipif(
     not pytest.config.getoption("--interactive"),
     reason="need --interactive option to run"
 )
 
+@pytest.fixture(params=['popen', 'win32'])
+def pysudo(request):
+    if request.param == 'popen':
+        return PopenPySudo
+    elif request.param == 'win32':
+        if sys.platform == 'win32':
+            return Win32PySudo
+        else:
+            pytest.skip('win32-only test')
+
 def fakesudo(*args, **kwargs):
     kwargs['fake'] = True
     return PopenPySudo(*args, **kwargs)
 
-class TestPopen:
+class TestPySudo:
 
-    def test_payload(self):
-        @fakesudo
+    def test_payload(self, pysudo):
+        @pysudo(fake=True)
         def foo(a, b):
             return a+b
         #
