@@ -75,10 +75,18 @@ class TestPySudo:
         assert '---pysudo return---' in stdout
 
     @interactive
-    def test_nofake(self):
-        @PopenPySudo
-        def foo():
-            import os
-            return os.getuid()
+    def test_nofake(self, pysudo):
+        if pysudo.__name__ == 'PopenPySudo' and sys.platform == 'win32':
+            pytest.skip('POSIX-only test')
         #
-        assert foo() == 0
+        @pysudo
+        def am_i_root():
+            import sys
+            import os
+            if sys.platform == 'win32':
+                import win32com.shell.shell as shell
+                return shell.IsUserAnAdmin()
+            else:
+                return os.getuid() == 0
+        #
+        assert am_i_root()
