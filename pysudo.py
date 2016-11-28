@@ -7,6 +7,9 @@ import cPickle
 import inspect
 from subprocess import Popen, list2cmdline
 
+class SudoError(Exception):
+    pass
+
 class AbstractPySudo(object):
 
     def __new__(cls, fn=None):
@@ -51,7 +54,8 @@ class AbstractPySudo(object):
         src = src.format(**locals())
         pyfile.write(src)
         ret = self.spawn(pyfile)
-        assert ret == 0
+        if ret != 0:
+            raise SudoError("Error in the child process: return code %s" % ret)
         with outfile.open() as f:
             result = cPickle.load(f)
         return result
