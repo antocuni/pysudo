@@ -140,6 +140,10 @@ class AbstractPySudo(object):
 
 class PopenPySudo(AbstractPySudo):
 
+    @staticmethod
+    def is_root():
+        return os.getuid() == 0
+
     def sudoargs(self, args):
         if self.fake:
             return args
@@ -158,6 +162,11 @@ class PopenPySudo(AbstractPySudo):
 
 
 class Win32PySudo(AbstractPySudo):
+
+    @staticmethod
+    def is_root():
+        import win32com.shell.shell as shell
+        return shell.IsUserAnAdmin()
 
     def spawn(self, pyfile):
         import win32com.shell.shell as shell
@@ -186,3 +195,11 @@ class Win32PySudo(AbstractPySudo):
         returncode = win32process.GetExitCodeProcess(proc_handle)
         stdout = stdout_file.read()
         return returncode, stdout
+
+
+if sys.platform == 'win32':
+    pysudo = Win32PySudo
+else:
+    pysudo = PopenPySudo
+
+is_root = pysudo.is_root
