@@ -1,19 +1,10 @@
 import pytest
 import sys
 import os
-from pysudo import AbstractPySudo, SudoError
-
-class FakePySudo(AbstractPySudo):
-
-    def spawn(self, pyfile):
-        # don't invoke sudo at all: this is still useful to test the
-        # communication with the subprocess
-        ret = os.system('%s %s' % (sys.executable, pyfile))
-        return ret >> 8
-
+from pysudo import PopenPySudo, SudoError
 
 def test_payload():
-    pysudo = FakePySudo
+    pysudo = PopenPySudo
     @pysudo
     def foo(a, b):
         return a+b
@@ -21,7 +12,7 @@ def test_payload():
     assert foo(1, 2) == 3
 
 def test_exit_code():
-    pysudo = FakePySudo
+    pysudo = PopenPySudo
     @pysudo
     def foo(a, b):
         import sys
@@ -32,7 +23,7 @@ def test_exit_code():
     assert 'return code 42' in str(exc.value)
 
 def test_stdout(capsys):
-    pysudo = FakePySudo
+    pysudo = PopenPySudo
     @pysudo
     def foo():
         print 'hello'
@@ -44,7 +35,7 @@ def test_stdout(capsys):
     assert out == 'hello\nworld\n\n' # the extra \n is added by pysudo
 
 def test_exception():
-    pysudo = FakePySudo
+    pysudo = PopenPySudo
     @pysudo
     def foo():
         def bar():
@@ -54,3 +45,15 @@ def test_exception():
     with pytest.raises(SudoError) as exc:
         foo()
     assert 'ZeroDivisionError' in str(exc.value)
+
+def test_use_stdout_file(tmpdir):
+    def foo(a, b):
+        print 'hello'
+        return a+b
+    #
+    decorator = PopenPySudo(use_stdout_file=True, tmpdir=tmpdir)
+    sudo_foo = decorator(foo)
+    assert sudo_foo(1, 2) == 3
+    stdout = tmpdir.join('stdout').read()
+    assert 'hello' in stdout
+    assert '---pysudo return---' in stdout
