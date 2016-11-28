@@ -144,7 +144,7 @@ class PopenPySudo(AbstractPySudo):
         if self.use_stdout_file:
             stdout_file = pyfile.dirpath('stdout')
             args.append(str(stdout_file))
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, universal_newlines=True)
         stdout, stderr = proc.communicate()
         if self.use_stdout_file:
             stdout = stdout_file.read()
