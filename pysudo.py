@@ -8,7 +8,16 @@ import inspect
 from subprocess import Popen, list2cmdline
 
 class SudoError(Exception):
-    pass
+    def __init__(self, formatted):
+        self.formatted = formatted
+        Exception.__init__(self)
+
+    def __str__(self):
+        return self.formatted
+
+    def __repr__(self):
+        return "%s: %s" % (self.__class__.__name__, self.formatted)
+
 
 class AbstractPySudo(object):
 
@@ -28,7 +37,7 @@ class AbstractPySudo(object):
     def spawn(self, pyfile):
         raise NotImplementedError
 
-    def execute(self, fn, *args, **kwargs):
+    def _write_source(self, fn, *args, **kwargs):
         tmpdir = py.path.local.mkdtemp()
         pyfile = tmpdir.join('pysudo_child.py')
         outfile = tmpdir.join('pysudo.out')
@@ -38,26 +47,36 @@ class AbstractPySudo(object):
         funcname = fn.__name__
         pickled_args = cPickle.dumps((args, kwargs))
         src = textwrap.dedent("""
-        import cPickle
         import sys
+        import cPickle
+        import traceback
         def pysudo(fn):
             return fn
 
         {payload}
-
         if __name__ == '__main__':
             with open({outfile.strpath!r}, 'w') as f:
                 sys.stdout = f
                 sys.stderr = f
                 pickled_args = {pickled_args!r}
                 args, kwargs = cPickle.loads(pickled_args)
-                result = {funcname}(*args, **kwargs)
-                print
-                print '---pysudo result---'
-                cPickle.dump(result, f)
+                try:
+                    result = {funcname}(*args, **kwargs)
+                except Exception:
+                    print
+                    print '---pysudo exception---'
+                    traceback.print_exc()
+                else:
+                    print
+                    print '---pysudo return---'
+                    cPickle.dump(result, f)
         """)
         src = src.format(**locals())
         pyfile.write(src)
+        return pyfile, outfile
+
+    def execute(self, fn, *args, **kwargs):
+        pyfile, outfile = self._write_source(fn, *args, **kwargs)
         ret = self.spawn(pyfile)
         if ret != 0:
             stdout = outfile.read()
@@ -71,8 +90,11 @@ class AbstractPySudo(object):
                 line = f.readline()
                 if line == '':
                     break
-                elif line == '---pysudo result---\n':
+                elif line == '---pysudo return---\n':
                     result = cPickle.load(f)
+                elif line == '---pysudo exception---\n':
+                    formatted_tb = f.read()
+                    raise SudoError(formatted_tb)
                 else:
                     print line,
         return result

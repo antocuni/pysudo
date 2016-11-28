@@ -42,3 +42,15 @@ def test_stdout(capsys):
     assert foo() == 42
     out, err = capsys.readouterr()
     assert out == 'hello\nworld\n\n' # the extra \n is added by pysudo
+
+def test_exception():
+    pysudo = FakePySudo
+    @pysudo
+    def foo():
+        def bar():
+            0/0
+        return bar()
+    #
+    with pytest.raises(SudoError) as exc:
+        foo()
+    assert 'ZeroDivisionError' in str(exc.value)
