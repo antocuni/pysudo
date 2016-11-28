@@ -40,9 +40,10 @@ class AbstractPySudo(object):
         else:
             return self
 
-    def __init__(self, use_stdout_file=False, tmpdir=None):
+    def __init__(self, use_stdout_file=False, tmpdir=None, fake=False):
         self.use_stdout_file = use_stdout_file
         self.tmpdir = tmpdir
+        self.fake = fake
 
     def __call__(self, fn):
         @functools.wraps(fn)
@@ -139,8 +140,13 @@ class AbstractPySudo(object):
 
 class PopenPySudo(AbstractPySudo):
 
+    def sudoargs(self, args):
+        if self.fake:
+            return args
+        return ['sudo'] + args
+
     def spawn(self, pyfile):
-        args = [sys.executable, str(pyfile)]
+        args = self.sudoargs([sys.executable, str(pyfile)])
         if self.use_stdout_file:
             stdout_file = pyfile.dirpath('stdout')
             args.append(str(stdout_file))
