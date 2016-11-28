@@ -12,7 +12,7 @@ class FakePySudo(AbstractPySudo):
         return ret >> 8
 
 
-def test_payload(tmpdir):
+def test_payload():
     pysudo = FakePySudo
     @pysudo
     def foo(a, b):
@@ -20,7 +20,7 @@ def test_payload(tmpdir):
     #
     assert foo(1, 2) == 3
 
-def test_exit_code(tmpdir):
+def test_exit_code():
     pysudo = FakePySudo
     @pysudo
     def foo(a, b):
@@ -30,3 +30,15 @@ def test_exit_code(tmpdir):
     with pytest.raises(SudoError) as exc:
         foo(1, 2)
     assert 'return code 42' in str(exc.value)
+
+def test_stdout(capsys):
+    pysudo = FakePySudo
+    @pysudo
+    def foo():
+        print 'hello'
+        print 'world'
+        return 42
+    #
+    assert foo() == 42
+    out, err = capsys.readouterr()
+    assert out == 'hello\nworld\n\n' # the extra \n is added by pysudo
