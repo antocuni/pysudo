@@ -56,6 +56,15 @@ class AbstractPySudo(object):
     def _get_source(self, fn, *args, **kwargs):
         payload = inspect.getsource(fn)
         payload = textwrap.dedent(payload)
+        #
+        # remove the @pysudo decorator (and any other)
+        lines = []
+        for line in payload.splitlines():
+            if line.startswith('@'):
+                continue
+            lines.append(line)
+        payload = '\n'.join(lines)
+        #
         funcname = fn.__name__
         pickled_args = cPickle.dumps((args, kwargs))
         src = textwrap.dedent(
@@ -63,9 +72,6 @@ class AbstractPySudo(object):
         import sys
         import cPickle
         import traceback
-        def pysudo(fn):
-            return fn
-
         {payload}
 
         class SetupStreams(object):

@@ -4,16 +4,14 @@ import os
 from pysudo import PopenPySudo, SudoError
 
 def test_payload():
-    pysudo = PopenPySudo
-    @pysudo
+    @PopenPySudo
     def foo(a, b):
         return a+b
     #
     assert foo(1, 2) == 3
 
 def test_exit_code():
-    pysudo = PopenPySudo
-    @pysudo
+    @PopenPySudo
     def foo(a, b):
         import sys
         sys.exit(42)
@@ -23,8 +21,7 @@ def test_exit_code():
     assert 'return code 42' in str(exc.value)
 
 def test_stdout(capsys):
-    pysudo = PopenPySudo
-    @pysudo
+    @PopenPySudo
     def foo():
         print 'hello'
         print 'world'
@@ -35,8 +32,7 @@ def test_stdout(capsys):
     assert out == 'hello\nworld\n\n' # the extra \n is added by pysudo
 
 def test_exception():
-    pysudo = PopenPySudo
-    @pysudo
+    @PopenPySudo
     def foo():
         def bar():
             0/0
@@ -47,13 +43,12 @@ def test_exception():
     assert 'ZeroDivisionError' in str(exc.value)
 
 def test_use_stdout_file(tmpdir):
+    @PopenPySudo(use_stdout_file=True, tmpdir=tmpdir)
     def foo(a, b):
         print 'hello'
         return a+b
     #
-    decorator = PopenPySudo(use_stdout_file=True, tmpdir=tmpdir)
-    sudo_foo = decorator(foo)
-    assert sudo_foo(1, 2) == 3
+    assert foo(1, 2) == 3
     stdout = tmpdir.join('stdout').read()
     assert 'hello' in stdout
     assert '---pysudo return---' in stdout
